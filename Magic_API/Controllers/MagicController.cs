@@ -1,4 +1,5 @@
-﻿using Magic_API.Datos;
+﻿using AutoMapper;
+using Magic_API.Datos;
 using Magic_API.Modelos;
 using Magic_API.Modelos.Dto;
 using Microsoft.AspNetCore.Http;
@@ -15,25 +16,28 @@ namespace Magic_API.Controllers
     {
         private readonly ILogger<MagicController> _logger;
         private readonly ApplicationDbContext _db;
-        public MagicController(ILogger<MagicController> logger, ApplicationDbContext db)
+        private readonly IMapper _mapper;
+        public MagicController(ILogger<MagicController> logger, ApplicationDbContext db, IMapper mapper)
         {
             _logger = logger;
             _db = db;
+            _mapper = mapper;
         }
 
         [HttpGet]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        public ActionResult<IEnumerable<MagicDto>> GetMagics()
+        public async Task <ActionResult<IEnumerable<MagicDto>>> GetMagics()
         {
             _logger.LogInformation("Todos los registros se estan obteniendo");
-            return Ok(_db.Magics.ToList());
+            IEnumerable<Magic> magicList = await _db.Magics.ToListAsync();
+            return Ok(_mapper.Map<IEnumerable<MagicDto>>(magicList));
         }
 
         [HttpGet("id:int", Name = "GetMagic")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public ActionResult<MagicDto> GetMagic(int id)
+        public async Task<ActionResult<MagicDto>> GetMagic(int id)
         {
             if (id == 0)
             {
@@ -41,61 +45,64 @@ namespace Magic_API.Controllers
                 return BadRequest();
             }
             //var Magic = MagicStore.MagicList.FirstOrDefault(m => m.Id == id);
-            var magic = _db.Magics.FirstOrDefault(m => m.Id == id);
+            var magic = await _db.Magics.FirstOrDefaultAsync(m => m.Id == id);
 
             if (magic == null)
             {
                 return NotFound();
             }
 
-            return Ok(magic);
+            return Ok(_mapper.Map<MagicDto>(magic));
         }
 
         [HttpPost]
         [ProducesResponseType(StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public ActionResult<MagicDto> CrearMagic([FromBody] MagicDto magicDto)
+        public async Task<ActionResult<MagicDto>> CrearMagic([FromBody] MagicCreateDto createDto)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
 
-            if (_db.Magics.FirstOrDefault(m => m.Nombre.ToLower() == magicDto.Nombre.ToLower()) != null)
+            if (await _db.Magics.FirstOrDefaultAsync(m => m.Nombre.ToLower() == createDto.Nombre.ToLower()) != null)
             {
                 ModelState.AddModelError("Nombre_Existente", "La Magic con ese nombre ya existe");  
                 return BadRequest(ModelState);
             }
 
-            if (magicDto == null)
+            if (createDto == null)
             {
-                return BadRequest(magicDto);
-            }
-            if (magicDto.Id > 0)
-            {
-                return StatusCode(StatusCodes.Status500InternalServerError);
+                return BadRequest(createDto);
             }
 
-            Magic modelo = new()
-            {
-                //Id = magicDto.Id,
-                Nombre = magicDto.Nombre,
-                Detalle = magicDto.Detalle,
-                ImagenUrl = magicDto.ImagenUrl,
-                Ocupantes = magicDto.Ocupantes,
-                Tarifa = magicDto.Tarifa,
-                MetrosCuadrados = magicDto.MetrosCuadrados,
-                Amenidad = magicDto.Amenidad
-            };
+            Magic modelo = _mapper.Map<Magic>(createDto);
 
-            _db.Magics.Add(modelo);
-            _db.SaveChanges();
+            //if (magicDto.Id > 0)
+            //{
+            //    return StatusCode(StatusCodes.Status500InternalServerError);
+            //}
+
+            //Magic modelo = new()
+            //{
+            //    //Id = magicDto.Id,
+            //    Nombre = magicDto.Nombre,
+            //    Detalle = magicDto.Detalle,
+            //    ImagenUrl = magicDto.ImagenUrl,
+            //    Ocupantes = magicDto.Ocupantes,
+            //    Tarifa = magicDto.Tarifa,
+            //    MetrosCuadrados = magicDto.MetrosCuadrados,
+            //    Amenidad = magicDto.Amenidad
+            //};
+
+            await _db.Magics.AddAsync(modelo);
+            await _db.SaveChangesAsync();
 
             //magicDto.Id = MagicStore.MagicList.OrderByDescending(m => m.Id).FirstOrDefault().Id + 1;
             //MagicStore.MagicList.Add(magicDto);
 
-            return CreatedAtRoute("GetMagic", new { id = magicDto.Id }, magicDto);
+            return CreatedAtRoute("GetMagic", new { id = modelo.Id }, modelo);
         }
 
 
@@ -103,19 +110,19 @@ namespace Magic_API.Controllers
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public IActionResult DeleteMagic(int id)
+        public async Task<IActionResult> DeleteMagic(int id)
         {
             if (id == 0)
             {
                 return BadRequest();
             }
-            var magic = _db.Magics.FirstOrDefault(v => v.Id == id);
+            var magic = await _db.Magics.FirstOrDefaultAsync(v => v.Id == id);
             if (magic == null)
             {
                 return NotFound();
             }
             _db.Magics.Remove(magic);
-            _db.SaveChanges();
+            await _db.SaveChangesAsync();
             //MagicStore.MagicList.Remove(magic);
             return NoContent();
         }
@@ -123,25 +130,28 @@ namespace Magic_API.Controllers
         [HttpPut("id:int")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public IActionResult UpdateMagic(int id, [FromBody] MagicDto magicDto)
+        public async Task<IActionResult> UpdateMagic(int id, [FromBody] MagicUpdateDto updateDto)
         {
-            if (magicDto==null || id!= magicDto.Id)
+            if (updateDto == null || id!= updateDto.Id)
             {
                 return BadRequest();
             }
-            Magic modelo = new()
-            {
-                Id = magicDto.Id,
-                Nombre = magicDto.Nombre,
-                Detalle = magicDto.Detalle,
-                ImagenUrl = magicDto.ImagenUrl,
-                Ocupantes = magicDto.Ocupantes,
-                Tarifa = magicDto.Tarifa,
-                MetrosCuadrados = magicDto.MetrosCuadrados,
-                Amenidad = magicDto.Amenidad
-            };
+
+            Magic modelo = _mapper.Map<Magic>(updateDto);
+
+            //Magic modelo = new()
+            //{
+            //    Id = magicDto.Id,
+            //    Nombre = magicDto.Nombre,
+            //    Detalle = magicDto.Detalle,
+            //    ImagenUrl = magicDto.ImagenUrl,
+            //    Ocupantes = magicDto.Ocupantes,
+            //    Tarifa = magicDto.Tarifa,
+            //    MetrosCuadrados = magicDto.MetrosCuadrados,
+            //    Amenidad = magicDto.Amenidad
+            //};
             _db.Magics.Update(modelo);
-            _db.SaveChanges();
+            await _db.SaveChangesAsync();
             return NoContent();
             //var magic = MagicStore.MagicList.FirstOrDefault(m => m.Id == id);
             //magic.Nombre = magicDto.Nombre;
@@ -152,25 +162,29 @@ namespace Magic_API.Controllers
         [HttpPatch("id:int")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public IActionResult UpdateMagic(int id, JsonPatchDocument<MagicDto> patchDto)
+        public async Task<IActionResult> UpdateMagic(int id, JsonPatchDocument<MagicUpdateDto> patchDto)
         {
             if (patchDto == null || id == 0)
             {
                 return BadRequest();
             }
             //var magic = MagicStore.MagicList.FirstOrDefault(m => m.Id == id);
-            var magic = _db.Magics.AsNoTracking().FirstOrDefault(m => m.Id == id);
-            MagicDto magicDto = new()
-            {
-                Id = magic.Id,
-                Nombre = magic.Nombre,
-                Detalle = magic.Detalle,
-                ImagenUrl = magic.ImagenUrl,
-                Ocupantes = magic.Ocupantes,
-                Tarifa = magic.Tarifa,
-                MetrosCuadrados = magic.MetrosCuadrados,
-                Amenidad = magic.Amenidad
-            };
+            var magic = await _db.Magics.AsNoTracking().FirstOrDefaultAsync(m => m.Id == id);
+
+            MagicUpdateDto magicDto = _mapper.Map<MagicUpdateDto>(magic);
+
+            //MagicUpdateDto magicDto = new()
+            //{
+            //    Id = magic.Id,
+            //    Nombre = magic.Nombre,
+            //    Detalle = magic.Detalle,
+            //    ImagenUrl = magic.ImagenUrl,
+            //    Ocupantes = magic.Ocupantes,
+            //    Tarifa = magic.Tarifa,
+            //    MetrosCuadrados = magic.MetrosCuadrados,
+            //    Amenidad = magic.Amenidad
+            //};
+
             if (magic == null) return BadRequest();
 
             patchDto.ApplyTo(magicDto, ModelState);
@@ -180,21 +194,23 @@ namespace Magic_API.Controllers
                 return BadRequest(ModelState);
             }
 
-            Magic modelo = new()
-            {
-                Id = magicDto.Id,
-                Nombre = magicDto.Nombre,
-                Detalle = magicDto.Detalle,
-                ImagenUrl = magicDto.ImagenUrl,
-                Ocupantes = magicDto.Ocupantes,
-                Tarifa = magicDto.Tarifa,
-                MetrosCuadrados = magicDto.MetrosCuadrados,
-                Amenidad = magicDto.Amenidad
-            };
+            Magic modelo = _mapper.Map<Magic>(magicDto);
+
+            //Magic modelo = new()
+            //{
+            //    Id = magicDto.Id,
+            //    Nombre = magicDto.Nombre,
+            //    Detalle = magicDto.Detalle,
+            //    ImagenUrl = magicDto.ImagenUrl,
+            //    Ocupantes = magicDto.Ocupantes,
+            //    Tarifa = magicDto.Tarifa,
+            //    MetrosCuadrados = magicDto.MetrosCuadrados,
+            //    Amenidad = magicDto.Amenidad
+            //};
 
             _db.Magics.Update(modelo);
-            _db.SaveChanges();
-            return NoContent();
+            await _db.SaveChangesAsync();
+            return NoContent(); 
         }
     }
 }

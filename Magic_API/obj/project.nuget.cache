@@ -1,9 +1,11 @@
 {
   "version": 2,
-  "dgSpecHash": "8k3FCDRUr61VAM5/U5TDwOkkFAGidP3dfuvVdOJBksOVQz7i1BQKx+89n7ONYo5Lzucaxagi44BEavAJ+BKqwA==",
+  "dgSpecHash": "vwal5+Qas7vtT/b7MvPg1j33Zf38AkslSnxWnYVDLNU5MNaWjW/I2jzq5H7k1C1jCeYVRzUuNOVVztrXwEvoXw==",
   "success": true,
   "projectFilePath": "D:\\PROYECTOS\\Magic_API\\Magic_API\\Magic_API.csproj",
   "expectedPackageFiles": [
+    "C:\\Users\\corvera.noe\\.nuget\\packages\\automapper\\12.0.1\\automapper.12.0.1.nupkg.sha512",
+    "C:\\Users\\corvera.noe\\.nuget\\packages\\automapper.extensions.microsoft.dependencyinjection\\12.0.1\\automapper.extensions.microsoft.dependencyinjection.12.0.1.nupkg.sha512",
     "C:\\Users\\corvera.noe\\.nuget\\packages\\azure.core\\1.24.0\\azure.core.1.24.0.nupkg.sha512",
     "C:\\Users\\corvera.noe\\.nuget\\packages\\azure.identity\\1.6.0\\azure.identity.1.6.0.nupkg.sha512",
     "C:\\Users\\corvera.noe\\.nuget\\packages\\humanizer.core\\2.14.1\\humanizer.core.2.14.1.nupkg.sha512",
